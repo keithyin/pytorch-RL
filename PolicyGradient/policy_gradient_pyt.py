@@ -62,6 +62,7 @@ def do_backprop(observations, fake_grads, rewards, policy_net):
     #     {'params': weight_decay_list},
     #     {'params': bias_list}
     # ], lr=0.00005)
+    policy_net.get_optimizer().zero_grad()
 
     assert isinstance(observations, list)
     assert isinstance(observations[0], np.ndarray)
