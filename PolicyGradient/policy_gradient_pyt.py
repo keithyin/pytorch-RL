@@ -48,7 +48,7 @@ def get_current_observation(current_img, prev_img):
     return current_img - prev_img if prev_img is not None else np.zeros_like(current_img, dtype=np.float32)
 
 
-def do_backprop(observations, fake_grads, rewards, policy_net):
+def do_backprop(observations, fake_grads, rewards, policy_net, step):
     """
     back-propagation
     :param observations: a list of states
@@ -62,6 +62,7 @@ def do_backprop(observations, fake_grads, rewards, policy_net):
     #     {'params': weight_decay_list},
     #     {'params': bias_list}
     # ], lr=0.00005)
+
     policy_net.get_optimizer().zero_grad()
 
     assert isinstance(observations, list)
@@ -81,9 +82,12 @@ def do_backprop(observations, fake_grads, rewards, policy_net):
     policy_net.weight_decay_loss().backward()
     policy_net.get_optimizer().step()
 
+    if step % 100 == 0:
+        policy_net.save_model('model.pkl')
 
 def main():
-    render = True
+    render = False
+    resume = True
     # using to record the the observation and rewards within one episode
     observations = []  # store the observations
     rewards = []  # store the rewards used for compute discounted reward
@@ -95,6 +99,8 @@ def main():
 
     policy_net = PG.PolicyNet()
     policy_net.cuda()
+    if resume:
+        policy_net.restore_ckpt('model.pkl')
 
     GLOBAL_STEP = 0
     while True:
@@ -129,13 +135,13 @@ def main():
 
         rewards.append(reward)
 
-        if done == True or len(fake_grads) > 1050:
+        if done == True or len(fake_grads) > 5000:
             GLOBAL_STEP += 1
             print("STEP: %d, the steps within one episode %d, mean rewards is %.7f" % (
                 GLOBAL_STEP, len(rewards), np.mean(np.array(rewards))))
             arr_rewards = np.array(rewards)
             print("bonus--> computer %d : agent %d" % (np.sum(arr_rewards == -1.), np.sum(arr_rewards == 1.)))
-            do_backprop(observations, fake_grads, rewards, policy_net)
+            do_backprop(observations, fake_grads, rewards, policy_net, GLOBAL_STEP)
 
 
             ## reset some buffers for the next episode

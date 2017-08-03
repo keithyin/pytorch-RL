@@ -5,15 +5,16 @@ from torch.nn import init
 import torch
 import torch.optim as optim
 
+
 class PolicyNet(Module):
     def __init__(self):
         self.optimizer = None
         # the inputs should be [80, 80, 3]
         super(PolicyNet, self).__init__()
-        self.conv1 = nn.Conv2d(1, 5, kernel_size=3, padding=1)  # [80, 80, 5]
-        self.conv2 = nn.Conv2d(5, 10, kernel_size=3, padding=1)  # [80, 80, 10]
-        self.fc1 = nn.Linear(64000, 20)  # [40]
-        self.fc2 = nn.Linear(20, 1)  # [1]
+        self.conv1 = nn.Conv2d(1, 16, kernel_size=8, stride=4, padding=2)  # [20, 20, 16]
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2, padding=1)  # [10, 10, 32]
+        self.fc1 = nn.Linear(3200, 256)  # [40]
+        self.fc2 = nn.Linear(256, 1)  # [1]
         self.reset_parameters()
 
     def forward(self, inputs):
@@ -21,7 +22,7 @@ class PolicyNet(Module):
         net = F.relu(net, inplace=True)
         net = self.conv2(net)
         net = F.relu(net, inplace=True)
-        net = net.view(-1, 80 * 80 * 10)
+        net = net.view(-1, 10 * 10 * 32)
         net = self.fc1(net)
         net = F.relu(net, inplace=True)
         net = self.fc2(net)
@@ -44,6 +45,15 @@ class PolicyNet(Module):
         if self.optimizer is None:
             self.optimizer = optim.RMSprop(self.parameters(), lr=1e-5)
         return self.optimizer
+
+    def save_model(self, file_path):
+        torch.save(self.state_dict(), file_path)
+        print("model's parameters has been saved")
+
+    def restore_ckpt(self, file_path):
+        self.load_state_dict(torch.load(file_path))
+        print("the parameters has been restored!")
+
 
 if __name__ == '__main__':
     net = PolicyNet()
