@@ -1,9 +1,7 @@
-See http://rll.berkeley.edu/deeprlcourse/docs/hw3.pdf for instructions
-
 The starter code was based on an implementation of Q-learning for Atari
 generously provided by Szymon Sidor from OpenAI
 
-# DQN pytorch implentation
+# Double DQN pytorch implentation
 
 pytorch implementation of [Deep Reinforcement Learning with Double Q-learning](http://www0.cs.ucl.ac.uk/staff/D.Silver/web/Applications_files/doubledqn.pdf) .
 
