@@ -5,7 +5,7 @@ generously provided by Szymon Sidor from OpenAI
 
 # DQN pytorch implentation
 
-pytorch implementation of [Human-level control through deep reinforcement learning](http://www.nature.com/nature/journal/v518/n7540/full/nature14236.html) .
+pytorch implementation of [Deep Reinforcement Learning with Double Q-learning](http://www0.cs.ucl.ac.uk/staff/D.Silver/web/Applications_files/doubledqn.pdf) .
 
 ## Model Detail
 
@@ -63,4 +63,4 @@ clip $r+\gamma\max\limits_{a'}Q(s',a';\theta^-_i)-Q(s,a;\theta_i)$ to be between
 
 ## Result
 Due to the lack of memory resources, i just use the size of Replay buffer 10000.
-After episode 850, the agent can beat computer easily.
+After episode 670, the agent can beat computer easily.
