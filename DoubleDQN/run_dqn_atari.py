@@ -7,23 +7,6 @@ from utils.atari_wrappers import *
 from utils.dqn_utils import *
 
 
-def atari_model(img_in, num_actions, scope, reuse=False):
-    # as described in https://storage.googleapis.com/deepmind-data/assets/papers/DeepMindNature14236Paper.pdf
-    with tf.variable_scope(scope, reuse=reuse):
-        out = img_in
-        with tf.variable_scope("convnet"):
-            # original architecture
-            out = layers.convolution2d(out, num_outputs=32, kernel_size=8, stride=4, activation_fn=tf.nn.relu)
-            out = layers.convolution2d(out, num_outputs=64, kernel_size=4, stride=2, activation_fn=tf.nn.relu)
-            out = layers.convolution2d(out, num_outputs=64, kernel_size=3, stride=1, activation_fn=tf.nn.relu)
-        out = layers.flatten(out)
-        with tf.variable_scope("action_value"):
-            out = layers.fully_connected(out, num_outputs=512, activation_fn=tf.nn.relu)
-            out = layers.fully_connected(out, num_outputs=num_actions, activation_fn=None)
-        # just return the logits
-        return out
-
-
 def atari_learn_pytorch(env,
                         num_timesteps):
     # This is just a rough estimate
@@ -67,33 +50,6 @@ def atari_learn_pytorch(env,
         frame_history_len=4,
     )
     env.close()
-
-
-def get_available_gpus():
-    from tensorflow.python.client import device_lib
-    local_device_protos = device_lib.list_local_devices()
-    return [x.physical_device_desc for x in local_device_protos if x.device_type == 'GPU']
-
-
-def set_global_seeds(i):
-    try:
-        import tensorflow as tf
-    except ImportError:
-        pass
-    else:
-        tf.set_random_seed(i)
-    np.random.seed(i)
-    random.seed(i)
-
-
-def get_session():
-    tf.reset_default_graph()
-    tf_config = tf.ConfigProto(
-        inter_op_parallelism_threads=1,
-        intra_op_parallelism_threads=1)
-    session = tf.Session(config=tf_config)
-    print("AVAILABLE GPUS: ", get_available_gpus())
-    return session
 
 
 def get_env(task, seed):
