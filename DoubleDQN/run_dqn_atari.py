@@ -56,8 +56,6 @@ def get_env(task, seed):
     env_id = task.env_id
 
     env = gym.make(env_id)
-
-    set_global_seeds(seed)
     env.seed(seed)
 
     expt_dir = '/tmp/hw3_vid_dir2/'
