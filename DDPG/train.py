@@ -1,6 +1,5 @@
 import os.path as osp
 import dqn_pytorch as dqn
-import tensorflow.contrib.layers as layers
 from gym import wrappers
 from nets.qnet_pytorch import QNetwork
 from utils.atari_wrappers import *
