@@ -84,7 +84,6 @@ def learn(env,
     # BUILD MODEL #
     ###############
     num_actions = env.action_space.n
-
     actor_net = Actor_cls(state_dim=4, num_actions=num_actions)
     critic_net = Critic_cls(state_dim=4, num_actions=num_actions)
     target_actor_net = Actor_cls(state_dim=4, num_actions=num_actions)
@@ -114,8 +113,6 @@ def learn(env,
         ####################################################
         idx = replay_buffer.store_frame(last_obs)
         cur_state = replay_buffer.encode_recent_observation()
-        print(cur_state)
-        exit()
         if cuda_available:
             cur_state = Variable(torch.FloatTensor(np.expand_dims(cur_state, axis=0)), volatile=True).cuda()
         else:
@@ -128,8 +125,8 @@ def learn(env,
         # cause we are using discrete action, we we need argmax it
         (_, interactive_action) = action.max(dim=1)
 
-        observation, reward, done, info = env.step(interactive_action.cpu().numpy())
-        replay_buffer.store_effect(idx=idx, action=action, reward=reward, done=done)
+        observation, reward, done, info = env.step(interactive_action.cpu().data.numpy()[0])
+        replay_buffer.store_effect(idx=idx, action=action.cpu().data.numpy(), reward=reward, done=done)
         reward_track.append(reward)
         if done:
             reward_track = np.array(reward_track)
@@ -152,12 +149,14 @@ def learn(env,
 
             obs_batch, act_batch, rew_batch, next_obs_batch, done_mask = \
                 replay_buffer.sample(batch_size=batch_size)
+
+            rew_batch = np.expand_dims(rew_batch, axis=-1)
             # ndarray -> torch.autograd.Variable
             obs_batch = Variable(torch.FloatTensor(obs_batch))
             act_batch = Variable(torch.FloatTensor(act_batch))
             rew_batch = torch.FloatTensor(rew_batch)
             next_obs_batch = Variable(torch.FloatTensor(next_obs_batch))
-            not_done_mask = torch.FloatTensor(1 - done_mask)
+            not_done_mask = torch.FloatTensor(np.expand_dims(1 - done_mask, axis=-1))
 
             if cuda_available:
                 obs_batch = obs_batch.cuda()
@@ -175,7 +174,6 @@ def learn(env,
             target_next_state_value = get_target_value_critic(target_critic_net=target_critic_net,
                                                               target_actor_net=target_actor_net,
                                                               next_obs_batch=next_obs_batch)
-
             target_next_state_value.data.mul_(gamma)
             # if done, using the reward as the target
             target_next_state_value.data.mul_(not_done_mask)
@@ -193,7 +191,7 @@ def learn(env,
             # step1: Done#####################################################
 
             # step2:
-            value = torch.neg(critic_net(states=obs_batch, actions=actor_net(obs_batch)))
+            value = torch.mean(torch.neg(critic_net(states=obs_batch, actions=actor_net(obs_batch))))
             actor_net.get_optimizer().zero_grad()
             value.backward()
             actor_net.get_optimizer().step()
@@ -207,6 +205,7 @@ def learn(env,
                 torch.save(target_critic_net.state_dict(), 'critic.pkl')
                 torch.save(target_actor_net.state_dict(), 'actor.pkl')
                 print('num iteration: ', t, ", the nets' parameters have been saved")
+
 
 def main():
     pass

@@ -4,10 +4,11 @@ import torch.nn as nn
 from torch import optim
 from torch.nn import init
 from collections import OrderedDict
+import torch.nn.functional as F
 
 
 class Actor(Module):
-    def __init__(self, state_dim=4, num_actions=None):
+    def __init__(self, state_dim, num_actions):
         """
         for CartPole state_dim=4 (position_of_cart, velocity_of_cart, angle_of_pole, rotation_rate_of_pole)
         :param state_dim: int
@@ -23,10 +24,9 @@ class Actor(Module):
 
     def forward(self, states):
         net = self.fc1(states)
-        net = nn.ReLU(net, inplace=True)
+        net = F.relu(net, inplace=True)
         net = self.fc2(net)
-        net = nn.ReLU(net, inplace=True)
-        net = self.output(net)
+        net = F.relu(net, inplace=True)
         action = self.output(net)
         return action
 
@@ -60,11 +60,10 @@ class Actor(Module):
         for k, v in self.state_dict().items():
             v.mul_(0.)
             v.add_((1 - decay) * state_dict[k])
-        print('moving average update is done!')
 
 
 class Critic(Module):
-    def __init__(self, state_dim=4, num_actions=None):
+    def __init__(self, state_dim, num_actions):
         """
         for CartPole state_dim=4 (position_of_cart, velocity_of_cart, angle_of_pole, rotation_rate_of_pole)
         :param state_dim: int
@@ -75,7 +74,7 @@ class Critic(Module):
         self.optimizer = None
         self.fc1 = nn.Linear(in_features=state_dim, out_features=400)
         self.fc2 = nn.Linear(in_features=400, out_features=300)
-        self.fc2_action = nn.Linear(in_features=state_dim, out_features=300)
+        self.fc2_action = nn.Linear(in_features=num_actions, out_features=300)
         self.output = nn.Linear(in_features=300, out_features=1)
         self.reset_parameters()
 
@@ -87,11 +86,11 @@ class Critic(Module):
         :return: Q(s,a)
         """
         net = self.fc1(states)
-        net = nn.ReLU(net, inplace=True)
+        net = F.relu(net, inplace=True)
         net = self.fc2(net)
         action_net = self.fc2_action(actions)
         net = net + action_net
-        net = nn.ReLU(net, inplace=True)
+        net = F.relu(net, inplace=True)
         value = self.output(net)
         return value
 
@@ -125,7 +124,6 @@ class Critic(Module):
         for k, v in self.state_dict().items():
             v.mul_(0.)
             v.add_((1 - decay) * state_dict[k])
-        print('moving average update is done!')
 
 
 def main():
