@@ -310,13 +310,18 @@ class ReplayBuffer(object):
             for idx in range(start_idx, end_idx):
                 frames.append(self.obs[idx % self.size])
             res = np.concatenate(frames, 2)
-            res = np.transpose(res, axes=(2, 0, 1))
+            # check the frame whether is image
+            if len(res.shape) == 3:
+                res = np.transpose(res, axes=(2, 0, 1))
             return res
         else:
             # this optimization has potential to saves about 30% compute time \o/
-            img_h, img_w = self.obs.shape[1], self.obs.shape[2]
-            res = self.obs[start_idx:end_idx].transpose(1, 2, 0, 3).reshape(img_h, img_w, -1)
-            res = np.transpose(res, axes=(2, 0, 1))
+            if len(self.obs.shape) == 4:
+                img_h, img_w = self.obs.shape[1], self.obs.shape[2]
+                res = self.obs[start_idx:end_idx].transpose(1, 2, 0, 3).reshape(img_h, img_w, -1)
+                res = np.transpose(res, axes=(2, 0, 1))
+            else:
+                res = self.obs[start_idx:end_idx]
             return res
 
     def store_frame(self, frame):

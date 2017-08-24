@@ -1,63 +1,41 @@
 import torch
 from torch.nn import Module
 import torch.nn as nn
-import torch.nn.functional as F
 from torch import optim
 from torch.nn import init
+from collections import OrderedDict
 
 
-class QNetwork(Module):
-    """
-    Q-network, the inputs is [batch_size, 4, 84, 84]
-    """
-
-    def __init__(self, num_actions=2):
-        super(QNetwork, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels=4, out_channels=32, kernel_size=8, stride=4, padding=2)
-        # out [batch_size, 9, 9, 64]
-        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2, padding=1)
-        self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1)
-        self.fc1 = nn.Linear(in_features=10 * 10 * 64, out_features=512)
-        self.out_layer = nn.Linear(in_features=512, out_features=num_actions)
+class Actor(Module):
+    def __init__(self, state_dim=4, num_actions=None):
+        """
+        for CartPole state_dim=4 (position_of_cart, velocity_of_cart, angle_of_pole, rotation_rate_of_pole)
+        :param state_dim: int
+        :param num_actions: int ,if None, action space is continuous
+        :return Nothing
+        """
+        super(Actor, self).__init__()
         self.optimizer = None
+        self.fc1 = nn.Linear(in_features=state_dim, out_features=400)
+        self.fc2 = nn.Linear(in_features=400, out_features=300)
+        self.output = nn.Linear(in_features=300, out_features=num_actions)
+        self.reset_parameters()
 
-    def forward(self, inputs):
-        net = self.conv1(inputs)
-        net = F.relu(net, inplace=True)
-        net = self.conv2(net)
-        net = F.relu(net, inplace=True)
-        net = self.conv3(net)
-        net = F.relu(net, inplace=True)
-        net = net.view(-1, 10 * 10 * 64)
-        net = self.fc1(net)
-        net = F.relu(net, inplace=True)
+    def forward(self, states):
+        net = self.fc1(states)
+        net = nn.ReLU(net, inplace=True)
+        net = self.fc2(net)
+        net = nn.ReLU(net, inplace=True)
+        net = self.output(net)
+        action = self.output(net)
+        return action
 
-        # the output should be the probability of each action
-        # using a softmax ??? have no idea
-        # just return the logits
-        out = self.out_layer(net)
-        return out
-
-    def reset_parameters(self, model=None):
-        if model is None:
-            for layer in self.children():
-                if isinstance(layer, (nn.Conv2d, nn.Linear)):
-                    init.xavier_normal(layer.weight)
-                    init.constant(layer.bias, 0)
-            print('the parameters have been initialized.')
-        else:
-            if not isinstance(model, QNetwork):
-                raise ValueError("model must be the same class with this object")
-            for param, model_param in zip(self.parameters(), model.parameters()):
-                param.data.copy_(model_param.data)
-            print('parameters transferred successfully.')
-
-    def get_optimizer(self):
-        if self.optimizer is None:
-            self.optimizer = optim.RMSprop(self.parameters(), lr=1e-5)
-            return self.optimizer
-        else:
-            return self.optimizer
+    def reset_parameters(self):
+        for layer in self.children():
+            if isinstance(layer, (nn.Conv2d, nn.Linear)):
+                init.xavier_normal(layer.weight)
+                init.constant(layer.bias, 0)
+        print("the parameter has been initialized...")
 
     def save_model(self, file_path, global_step=None):
         if global_step is None:
@@ -69,10 +47,90 @@ class QNetwork(Module):
             self.load_state_dict(torch.load(file_path))
         print('the model has been loaded from %s ' % file_path)
 
+    def get_optimizer(self):
+        if self.optimizer is None:
+            self.optimizer = optim.RMSprop(self.parameters(), lr=1e-5)
+            return self.optimizer
+        else:
+            return self.optimizer
+
+    def moving_average_update(self, state_dict=None, decay=.99):
+        # decay v = decay*v + (1-decay)*new_v
+        assert isinstance(state_dict, OrderedDict)
+        for k, v in self.state_dict().items():
+            v.mul_(0.)
+            v.add_((1 - decay) * state_dict[k])
+        print('moving average update is done!')
+
+
+class Critic(Module):
+    def __init__(self, state_dim=4, num_actions=None):
+        """
+        for CartPole state_dim=4 (position_of_cart, velocity_of_cart, angle_of_pole, rotation_rate_of_pole)
+        :param state_dim: int
+        :param num_actions: int ,if None, action space is continuous
+        :return Nothing
+        """
+        super(Critic, self).__init__()
+        self.optimizer = None
+        self.fc1 = nn.Linear(in_features=state_dim, out_features=400)
+        self.fc2 = nn.Linear(in_features=400, out_features=300)
+        self.fc2_action = nn.Linear(in_features=state_dim, out_features=300)
+        self.output = nn.Linear(in_features=300, out_features=1)
+        self.reset_parameters()
+
+    def forward(self, states, actions):
+        """
+        forward process: get the Q(s,a)
+        :param states: [batch_size, state_feature]
+        :param actions: [batch_size, action]
+        :return: Q(s,a)
+        """
+        net = self.fc1(states)
+        net = nn.ReLU(net, inplace=True)
+        net = self.fc2(net)
+        action_net = self.fc2_action(actions)
+        net = net + action_net
+        net = nn.ReLU(net, inplace=True)
+        value = self.output(net)
+        return value
+
+    def reset_parameters(self):
+        for layer in self.children():
+            if isinstance(layer, (nn.Conv2d, nn.Linear)):
+                init.xavier_normal(layer.weight)
+                init.constant(layer.bias, 0)
+        print("the parameter has been initialized...")
+
+    def save_model(self, file_path, global_step=None):
+        if global_step is None:
+            torch.save(self.state_dict(), file_path)
+        print('the model has been saved to %s' % file_path)
+
+    def restore_model(self, file_path, global_step=None):
+        if global_step is None:
+            self.load_state_dict(torch.load(file_path))
+        print('the model has been loaded from %s ' % file_path)
+
+    def get_optimizer(self):
+        if self.optimizer is None:
+            self.optimizer = optim.RMSprop(self.parameters(), lr=1e-5)
+            return self.optimizer
+        else:
+            return self.optimizer
+
+    def moving_average_update(self, state_dict=None, decay=.99):
+        # decay v = decay*v + (1-decay)*new_v
+        assert isinstance(state_dict, OrderedDict)
+        for k, v in self.state_dict().items():
+            v.mul_(0.)
+            v.add_((1 - decay) * state_dict[k])
+        print('moving average update is done!')
+
 
 def main():
-    qnet = QNetwork()
-    opt = qnet.get_optimizer()
+    actor = Critic(state_dim=4, num_actions=2)
+    print(actor.moving_average_update())
 
 
 if __name__ == '__main__':
