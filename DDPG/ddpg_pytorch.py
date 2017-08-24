@@ -114,6 +114,8 @@ def learn(env,
         ####################################################
         idx = replay_buffer.store_frame(last_obs)
         cur_state = replay_buffer.encode_recent_observation()
+        print(cur_state)
+        exit()
         if cuda_available:
             cur_state = Variable(torch.FloatTensor(np.expand_dims(cur_state, axis=0)), volatile=True).cuda()
         else:
