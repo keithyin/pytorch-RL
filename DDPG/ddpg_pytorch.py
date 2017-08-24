@@ -86,7 +86,7 @@ def learn(env,
     num_actions = env.action_space.n
 
     actor_net = Actor_cls(state_dim=4, num_actions=num_actions)
-    critic_net = Critic_cls(stae_dim=4, num_actions=num_actions)
+    critic_net = Critic_cls(state_dim=4, num_actions=num_actions)
     target_actor_net = Actor_cls(state_dim=4, num_actions=num_actions)
     target_critic_net = Critic_cls(state_dim=4, num_actions=num_actions)
 
