@@ -18,16 +18,20 @@ class Actor(Module):
         super(Actor, self).__init__()
         self.optimizer = None
         self.fc1 = nn.Linear(in_features=state_dim, out_features=400)
+        self.bn1 = nn.BatchNorm1d(num_features=400, affine=False)
         self.fc2 = nn.Linear(in_features=400, out_features=300)
+        self.bn2 = nn.BatchNorm1d(num_features=300, affine=False)
         self.output = nn.Linear(in_features=300, out_features=num_actions)
         self.reset_parameters()
 
     def forward(self, states):
         net = self.fc1(states)
+        net = self.bn1(net)
         net = F.relu(net, inplace=True)
         net = self.fc2(net)
+        net = self.bn2(net)
         net = F.relu(net, inplace=True)
-        action = self.output(net)
+        action = 2 * F.tanh(self.output(net))
         return action
 
     def reset_parameters(self):
@@ -49,16 +53,16 @@ class Actor(Module):
 
     def get_optimizer(self):
         if self.optimizer is None:
-            self.optimizer = optim.RMSprop(self.parameters(), lr=1e-5)
+            self.optimizer = optim.Adam(params=self.parameters(), lr=1e-4)
             return self.optimizer
         else:
             return self.optimizer
 
-    def moving_average_update(self, state_dict=None, decay=.99):
+    def moving_average_update(self, state_dict, decay=.99):
         # decay v = decay*v + (1-decay)*new_v
         assert isinstance(state_dict, OrderedDict)
         for k, v in self.state_dict().items():
-            v.mul_(0.)
+            v.mul_(decay)
             v.add_((1 - decay) * state_dict[k])
 
 
@@ -73,8 +77,10 @@ class Critic(Module):
         super(Critic, self).__init__()
         self.optimizer = None
         self.fc1 = nn.Linear(in_features=state_dim, out_features=400)
+        self.bn1 = nn.BatchNorm1d(num_features=400, affine=False)
         self.fc2 = nn.Linear(in_features=400, out_features=300)
         self.fc2_action = nn.Linear(in_features=num_actions, out_features=300)
+        self.bn2 = nn.BatchNorm1d(num_features=300, affine=False)
         self.output = nn.Linear(in_features=300, out_features=1)
         self.reset_parameters()
 
@@ -86,10 +92,12 @@ class Critic(Module):
         :return: Q(s,a)
         """
         net = self.fc1(states)
+        net = self.bn1(net)
         net = F.relu(net, inplace=True)
         net = self.fc2(net)
         action_net = self.fc2_action(actions)
         net = net + action_net
+        net = self.bn2(net)
         net = F.relu(net, inplace=True)
         value = self.output(net)
         return value
@@ -113,22 +121,22 @@ class Critic(Module):
 
     def get_optimizer(self):
         if self.optimizer is None:
-            self.optimizer = optim.RMSprop(self.parameters(), lr=1e-5)
+            self.optimizer = optim.Adam(params=self.parameters(), lr=1e-4)
             return self.optimizer
         else:
             return self.optimizer
 
-    def moving_average_update(self, state_dict=None, decay=.99):
+    def moving_average_update(self, state_dict, decay=.99):
         # decay v = decay*v + (1-decay)*new_v
         assert isinstance(state_dict, OrderedDict)
         for k, v in self.state_dict().items():
-            v.mul_(0.)
+            v.mul_(decay)
             v.add_((1 - decay) * state_dict[k])
 
 
 def main():
-    actor = Critic(state_dim=4, num_actions=2)
-    print(actor.moving_average_update())
+    actor = Actor(state_dim=3, num_actions=1)
+    print(len(list(actor.parameters())))
 
 
 if __name__ == '__main__':

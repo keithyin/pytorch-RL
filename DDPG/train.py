@@ -3,7 +3,7 @@ import gym
 from nets.models import Actor, Critic
 
 
-def atari_learn_pytorch(env):
+def ddpg_learn_pytorch(env):
     ddpg.learn(
         env,
         Actor_cls=Actor,
@@ -18,8 +18,8 @@ def atari_learn_pytorch(env):
 
 
 def main():
-    env = gym.make('CartPole-v0')
-    atari_learn_pytorch(env)
+    env = gym.make('Pendulum-v0')
+    ddpg_learn_pytorch(env)
 
 
 if __name__ == "__main__":

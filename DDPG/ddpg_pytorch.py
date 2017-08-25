@@ -3,7 +3,6 @@ this is an implementation of DDPG algorithm
 """
 
 import itertools
-import sys
 from collections import namedtuple
 import torch
 import gym.spaces
@@ -50,7 +49,7 @@ def get_target_value_dqn(target_net, out_one_hot, next_obs_batch):
     :return: target value
 
     """
-
+    # TODO: ... fill this function
     pass
 
 
@@ -78,16 +77,16 @@ def learn(env,
           learning_starts=50000,
           frame_history_len=1):
     assert type(env.observation_space) == gym.spaces.Box
-    assert type(env.action_space) == gym.spaces.Discrete
+    assert type(env.action_space) == gym.spaces.Box
 
     ###############
     # BUILD MODEL #
     ###############
-    num_actions = env.action_space.n
-    actor_net = Actor_cls(state_dim=4, num_actions=num_actions)
-    critic_net = Critic_cls(state_dim=4, num_actions=num_actions)
-    target_actor_net = Actor_cls(state_dim=4, num_actions=num_actions)
-    target_critic_net = Critic_cls(state_dim=4, num_actions=num_actions)
+
+    actor_net = Actor_cls(state_dim=3, num_actions=1)
+    critic_net = Critic_cls(state_dim=3, num_actions=1)
+    target_actor_net = Actor_cls(state_dim=3, num_actions=1)
+    target_critic_net = Critic_cls(state_dim=3, num_actions=1)
 
     if cuda_available:
         actor_net.cuda()
@@ -122,15 +121,12 @@ def learn(env,
         # TODO: add Ornstein-Uhlenbeck process
         action = actor_net(cur_state)
 
-        # cause we are using discrete action, we we need argmax it
-        (_, interactive_action) = action.max(dim=1)
-
-        observation, reward, done, info = env.step(interactive_action.cpu().data.numpy()[0])
-        replay_buffer.store_effect(idx=idx, action=action.cpu().data.numpy(), reward=reward, done=done)
+        observation, reward, done, info = env.step(action.cpu().data.numpy()[0])
+        replay_buffer.store_effect(idx=idx, action=action.cpu().data.numpy()[0], reward=reward, done=done)
         reward_track.append(reward)
         if done:
             reward_track = np.array(reward_track)
-            episode_rew = np.sum(reward_track == 1)
+            episode_rew = np.sum(reward_track)
             print("episode %d , reward %d" % (episode_num, episode_rew))
             episode_num += 1
             reward_track = []
@@ -153,7 +149,7 @@ def learn(env,
             rew_batch = np.expand_dims(rew_batch, axis=-1)
             # ndarray -> torch.autograd.Variable
             obs_batch = Variable(torch.FloatTensor(obs_batch))
-            act_batch = Variable(torch.FloatTensor(act_batch))
+            act_batch = Variable(torch.FloatTensor(np.expand_dims(act_batch, axis=-1)))
             rew_batch = torch.FloatTensor(rew_batch)
             next_obs_batch = Variable(torch.FloatTensor(next_obs_batch))
             not_done_mask = torch.FloatTensor(np.expand_dims(1 - done_mask, axis=-1))
