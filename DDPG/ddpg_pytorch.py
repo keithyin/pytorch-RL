@@ -120,9 +120,11 @@ def learn(env,
         # choose the action at the current state
         # TODO: add Ornstein-Uhlenbeck process
         action = actor_net(cur_state)
+        action_numpy = action.cpu().data.numpy()[0]
+        action_numpy = action_numpy + np.random.normal(loc=0., scale=.1)
 
-        observation, reward, done, info = env.step(action.cpu().data.numpy()[0])
-        replay_buffer.store_effect(idx=idx, action=action.cpu().data.numpy()[0], reward=reward, done=done)
+        observation, reward, done, info = env.step(action_numpy)
+        replay_buffer.store_effect(idx=idx, action=action_numpy, reward=reward, done=done)
         reward_track.append(reward)
         if done:
             reward_track = np.array(reward_track)

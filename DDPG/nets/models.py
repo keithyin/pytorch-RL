@@ -31,7 +31,8 @@ class Actor(Module):
         net = self.fc2(net)
         net = self.bn2(net)
         net = F.relu(net, inplace=True)
-        action = 2 * F.tanh(self.output(net))
+        net = self.output(net)
+        action = 2 * F.tanh(net)
         return action
 
     def reset_parameters(self):
