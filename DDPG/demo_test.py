@@ -1,11 +1,10 @@
 import gym
-import time
+from nets.models import Actor
+import torch
 
 env = gym.make('Pendulum-v0')
-env.reset()
+cur_state = env.reset()
 
-action = env.action_space.sample()
-obs, rew, done, info = env.step(action=action)
-print(env.action_space.sample())
-print(env.action_space.sample())
-
+actor = Actor(state_dim=3, num_actions=1)
+actor.load_state_dict(torch.load('actor.pkl'))
+actor.cuda()

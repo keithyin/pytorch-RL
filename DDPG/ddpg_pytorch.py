@@ -146,10 +146,6 @@ def learn(env,
     target_actor_net = Actor_cls(state_dim=3, num_actions=1)
     target_critic_net = Critic_cls(state_dim=3, num_actions=1)
 
-    eval_batch_obs = None
-    eval_batch_action = None
-    action_value_track = []
-
     if cuda_available:
         actor_net.cuda()
         target_actor_net.cuda()
