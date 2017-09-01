@@ -1,6 +1,3 @@
-
-**under construction, haven't finished yet**
-
 # DDPG pytorch implentation
 
 pytorch implementation of [Continuous control with deep reinforcement learning](https://arxiv.org/pdf/1509.02971.pdf) .
