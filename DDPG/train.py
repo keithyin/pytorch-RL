@@ -8,8 +8,8 @@ def ddpg_learn_pytorch(env):
         env,
         Actor_cls=Actor,
         Critic_cls=Critic,
-        replay_buffer_size=10000,
-        batch_size=16,
+        replay_buffer_size=1000000,
+        batch_size=64,
         gamma=0.99,
         learning_starts=500,
         frame_history_len=1

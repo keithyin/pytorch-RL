@@ -5,6 +5,13 @@ from torch import optim
 from torch.nn import init
 from collections import OrderedDict
 import torch.nn.functional as F
+import numpy as np
+
+
+def init_fanin(tensor):
+    fanin = tensor.size(1)
+    v = 1.0 / np.sqrt(fanin)
+    init.uniform(tensor, -v, v)
 
 
 class Actor(Module):
@@ -18,29 +25,21 @@ class Actor(Module):
         super(Actor, self).__init__()
         self.optimizer = None
         self.fc1 = nn.Linear(in_features=state_dim, out_features=400)
-        self.bn1 = nn.BatchNorm1d(num_features=400, affine=False)
+        init_fanin(self.fc1.weight)
         self.fc2 = nn.Linear(in_features=400, out_features=300)
-        self.bn2 = nn.BatchNorm1d(num_features=300, affine=False)
+        init_fanin(self.fc2.weight)
         self.output = nn.Linear(in_features=300, out_features=num_actions)
-        self.reset_parameters()
+        init.uniform(self.output.weight, -3e-3, 3e-3)
+        init.uniform(self.output.bias, -3e-3, 3e-3)
 
     def forward(self, states):
         net = self.fc1(states)
-        net = self.bn1(net)
         net = F.relu(net, inplace=True)
         net = self.fc2(net)
-        net = self.bn2(net)
         net = F.relu(net, inplace=True)
         net = self.output(net)
-        action = 2 * F.tanh(net)
+        action = 2*F.tanh(net)
         return action
-
-    def reset_parameters(self):
-        for layer in self.children():
-            if isinstance(layer, (nn.Conv2d, nn.Linear)):
-                init.xavier_normal(layer.weight)
-                init.constant(layer.bias, 0)
-        print("the parameter has been initialized...")
 
     def save_model(self, file_path, global_step=None):
         if global_step is None:
@@ -59,7 +58,7 @@ class Actor(Module):
         else:
             return self.optimizer
 
-    def moving_average_update(self, state_dict, decay=.99):
+    def moving_average_update(self, state_dict, decay=.999):
         # decay v = decay*v + (1-decay)*new_v
         assert isinstance(state_dict, OrderedDict)
         for k, v in self.state_dict().items():
@@ -78,12 +77,14 @@ class Critic(Module):
         super(Critic, self).__init__()
         self.optimizer = None
         self.fc1 = nn.Linear(in_features=state_dim, out_features=400)
-        self.bn1 = nn.BatchNorm1d(num_features=400, affine=False)
+        init_fanin(self.fc1.weight)
         self.fc2 = nn.Linear(in_features=400, out_features=300)
+        init_fanin(self.fc2.weight)
         self.fc2_action = nn.Linear(in_features=num_actions, out_features=300)
-        self.bn2 = nn.BatchNorm1d(num_features=300, affine=False)
+        init_fanin(self.fc2_action.weight)
         self.output = nn.Linear(in_features=300, out_features=1)
-        self.reset_parameters()
+        init.uniform(self.output.weight, -3e-3, 3e-3)
+        init.uniform(self.output.bias, -3e-3, 3e-3)
 
     def forward(self, states, actions):
         """
@@ -93,22 +94,13 @@ class Critic(Module):
         :return: Q(s,a)
         """
         net = self.fc1(states)
-        net = self.bn1(net)
         net = F.relu(net, inplace=True)
         net = self.fc2(net)
         action_net = self.fc2_action(actions)
         net = net + action_net
-        net = self.bn2(net)
         net = F.relu(net, inplace=True)
         value = self.output(net)
         return value
-
-    def reset_parameters(self):
-        for layer in self.children():
-            if isinstance(layer, (nn.Conv2d, nn.Linear)):
-                init.xavier_normal(layer.weight)
-                init.constant(layer.bias, 0)
-        print("the parameter has been initialized...")
 
     def save_model(self, file_path, global_step=None):
         if global_step is None:
@@ -122,12 +114,12 @@ class Critic(Module):
 
     def get_optimizer(self):
         if self.optimizer is None:
-            self.optimizer = optim.Adam(params=self.parameters(), lr=1e-4)
+            self.optimizer = optim.Adam(params=self.parameters(), lr=1e-3)
             return self.optimizer
         else:
             return self.optimizer
 
-    def moving_average_update(self, state_dict, decay=.99):
+    def moving_average_update(self, state_dict, decay=.999):
         # decay v = decay*v + (1-decay)*new_v
         assert isinstance(state_dict, OrderedDict)
         for k, v in self.state_dict().items():
