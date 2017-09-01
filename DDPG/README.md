@@ -11,6 +11,12 @@ pytorch implementation of [Continuous control with deep reinforcement learning](
 python train.py
 ```
 
+once you get the reward larger than -200 (-200~0), you can terminate the training process, and test your actor
+
+```shell
+python demo_test.py
+```
+
 ## Model Detail
 
 **model**
