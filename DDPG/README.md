@@ -12,7 +12,7 @@ python train.py
 ```
 
 once you get the reward larger than -200 (-200~0), you can terminate the training process, and test your actor
-
+(about 90 episode, you can achieve this result)
 ```shell
 python demo_test.py
 ```
@@ -50,7 +50,7 @@ target_actor_net
 * value function:
     * BN : affine=True, doesn't work
     * without BN: worked
-* moving average decay : 0.999(good, more stable), 0.99(bad)
+* moving average decay : 0.999(good, more stable), one can try 0.9, 0.99
     * it seems that we should update target-net more slowly
 
 ## details

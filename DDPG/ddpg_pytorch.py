@@ -259,8 +259,8 @@ def learn(env,
             # step2: Done#####################################################
 
             # step3:
-            target_actor_net.moving_average_update(state_dict=actor_net.state_dict(), decay=.9)
-            target_critic_net.moving_average_update(state_dict=critic_net.state_dict(), decay=.9)
+            target_actor_net.moving_average_update(state_dict=actor_net.state_dict(), decay=.999)
+            target_critic_net.moving_average_update(state_dict=critic_net.state_dict(), decay=.999)
 
             if t % 500 == 0:
                 torch.save(target_critic_net.state_dict(), 'critic.pkl')
