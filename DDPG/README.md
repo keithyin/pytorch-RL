@@ -51,6 +51,7 @@ target_actor_net
     * BN : affine=True, doesn't work
     * without BN: worked
 * moving average decay : 0.999(good, more stable), 0.99(bad)
+    * it seems that we should update target-net more slowly
 
 ## details
 this program has been debugged 2 weeks, finally get it works, there is a lot of details to keep in mind:
