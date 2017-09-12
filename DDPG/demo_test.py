@@ -13,22 +13,6 @@ actor.load_state_dict(torch.load('actor.pkl'))
 actor.cuda()
 warmup = True
 
-while True:
-    env.render()
-    if warmup:
-        time.sleep(1)
-        warmup = False
-    else:
-        time.sleep(1 / 60)
-    cur_state = np.expand_dims(cur_state, axis=0)
-    cur_state = Variable(torch.FloatTensor(cur_state)).cuda()
-    action = actor(cur_state).cpu().data.numpy()[0]
-    cur_state, _, done, info = env.step(action)
-    if done:
-        exit()
-
-
-#  random code
 # while True:
 #     env.render()
 #     if warmup:
@@ -36,6 +20,22 @@ while True:
 #         warmup = False
 #     else:
 #         time.sleep(1 / 60)
-#     cur_state, _, done, info = env.step(env.action_space.sample())
+#     cur_state = np.expand_dims(cur_state, axis=0)
+#     cur_state = Variable(torch.FloatTensor(cur_state)).cuda()
+#     action = actor(cur_state).cpu().data.numpy()[0]
+#     cur_state, _, done, info = env.step(action)
 #     if done:
 #         exit()
+
+
+# random code
+while True:
+    env.render()
+    if warmup:
+        time.sleep(1)
+        warmup = False
+    else:
+        time.sleep(1 / 60)
+    cur_state, _, done, info = env.step(env.action_space.sample())
+    if done:
+        exit()

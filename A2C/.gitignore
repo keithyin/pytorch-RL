@@ -1,0 +1,5 @@
+# pycharm
+__pycache__/
+.idea/
+nets/__pycache__
+utils/__pycache__
