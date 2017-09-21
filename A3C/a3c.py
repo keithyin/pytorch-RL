@@ -6,6 +6,7 @@ import nets
 import utils
 import itertools
 import time
+import os
 
 
 def get_env():
@@ -68,32 +69,37 @@ def learning_thread(shared_actor,
     replay_buffer = utils.ReplayBuffer(size=4, frame_history_len=frame_history_len)
 
     #
-    idx = replay_buffer.store_frame(obs)
+    replay_buffer.store_frame(obs)
 
-    num_n_steps = 4
+    num_n_steps = 20
     for i in itertools.count():
         states = []
         actions = []
         next_states = []
         dones = []
         rewards = []
-        for i in range(num_n_steps):
-            replay_buffer.store_frame(obs)
-            state = replay_buffer.encode_recent_observation()
+        replay_buffer.store_frame(obs)
+        state = replay_buffer.encode_recent_observation()
+        for j in range(num_n_steps):
+            states.append(state)
+
             state = np.expand_dims(state, axis=0) / 255.0 - .5
 
             state = Variable(torch.from_numpy(state.astype(np.float32)), volatile=True)
             logits = local_actor(state)
-            action = utils.epsilon_greedy(logits, num_actions=num_actions, epsilon=exploration(i))
+            action = utils.epsilon_greedy(logits, num_actions=num_actions, epsilon=exploration.value(i))
+
             next_obs, reward, done, info = env.step(action)
 
             replay_buffer.store_frame(next_obs)
+            next_state = replay_buffer.encode_recent_observation()
             # store the states for get the gradients
-            states.append(state)
+
             actions.append(action)
             dones.append(done)
             rewards.append(reward)
-            next_states.append(replay_buffer.encode_recent_observation())
+            next_states.append(next_state)
+            state = next_state
 
             if done:
                 break
@@ -101,10 +107,11 @@ def learning_thread(shared_actor,
         # from numpy to torch.Variable
         cur_states = np.array(states) / 255.0 - .5
         cur_states = Variable(torch.FloatTensor(cur_states.astype(np.float32)))
+
         next_states = np.array(next_states) / 255.0 - .5
         next_states = Variable(torch.FloatTensor(next_states.astype(np.float32)), volatile=True)
-        not_done_mask = torch.FloatTensor(1 - np.array(dones).astype(dtype=np.float32)).view_(-1, 1)
-        rewards = torch.FloatTensor(np.array(rewards).astype(np.float32)).view_(-1, 1)
+        not_done_mask = torch.FloatTensor(1 - np.array(dones).astype(dtype=np.float32)).view(-1, 1)
+        rewards = torch.FloatTensor(np.array(rewards).astype(np.float32)).view(-1, 1)
         values = local_critic(next_states)
         targets = values.data.mul_(not_done_mask).mul_(gamma)
         targets = targets.add_(rewards)
@@ -118,8 +125,8 @@ def learning_thread(shared_actor,
         # compute the gradient of the actor network
         # first : compute the head gradient
 
-        head_gradient = -(targets - values) * utils.one_hot(actions, depth=num_actions)
-        print(head_gradient)
+        head_gradient = -(targets - values.data) * utils.one_hot(actions, depth=num_actions)
+
         actions_prob = local_actor(cur_states)
 
         local_actor.zero_grad()
@@ -135,17 +142,16 @@ def test_procedure(shared_actor, env):
     num_actions = env.action_space.n
     local_actor = nets.Actor(num_actions=num_actions)
     # load parameters from shared models
+    begin_time = time.time()
     while True:
-        local_actor.load_state_dict(shared_actor.state_dict())
-
         replay_buffer = utils.ReplayBuffer(size=4, frame_history_len=4)
-
+        local_actor.load_state_dict(shared_actor.state_dict())
         obs = env.reset()
         rewards = []
-        begin_time = time.time()
         while True:
             replay_buffer.store_frame(obs)
             states = replay_buffer.encode_recent_observation()
+
             states = np.expand_dims(states, axis=0) / 255.0 - .5
             logits = local_actor(Variable(torch.FloatTensor(states.astype(np.float32))))
             action = utils.epsilon_greedy(logits, num_actions=env.action_space.n, epsilon=-1.)
@@ -155,6 +161,7 @@ def test_procedure(shared_actor, env):
                 print("Time:{}, computer:{}, agent:{}".format(time.time() - begin_time,
                                                               sum(np.array(rewards) == -1),
                                                               sum(np.array(rewards) == 1)))
+                break
 
 
 def main():

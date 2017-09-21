@@ -19,15 +19,8 @@ Each Thread:
 
 **model**
 
-```python
-conv(in_channels=4, out_channels=32, kernel_size=8, stride=4)
-conv(in_channels=32, out_channels=64, kernel_size=4, stride=2)
-conv(in_channels=64, out_channels=64, kernel_size=3, stride=1)
-linear(in_features=10 * 10 * 64, out_features=512)
-logits_layer(in_features=512, out_features=num_actions)
-```
 
-* optimizer: RMSprop
+* optimizer: Adam
 
 **preprocessing**
 

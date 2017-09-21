@@ -1,18 +1,8 @@
 """This file includes a collection of utility functions that are useful for
 implementing DQN."""
 import gym
-import tensorflow as tf
 import numpy as np
 import random
-
-
-def huber_loss(x, delta=1.0):
-    # https://en.wikipedia.org/wiki/Huber_loss
-    return tf.select(
-        tf.abs(x) < delta,
-        tf.square(x) * 0.5,
-        delta * (tf.abs(x) - 0.5 * delta)
-    )
 
 
 def sample_n_unique(sampling_f, n):

@@ -1,6 +1,12 @@
 import torch
-import numpy as np
+from torch import nn
+from torchvision import models
+from torch import optim
 
-a = torch.FloatTensor([np.array([1., 2.]), np.array([2., 3.])])
-c = a.add(1, torch.FloatTensor([3]))
-print(c)
+resnet_model = models.resnet18(pretrained=False)
+for name, para in resnet_model.named_parameters():
+    print(name)
+
+optim.SGD()
+
+# nn.Module

@@ -10,7 +10,7 @@ import time
 
 
 def main():
-    env = a3c.get_env()
+    env = a2c.get_env()
 
     print("num actions ", env.action_space.n)
 
@@ -36,7 +36,7 @@ def main():
     for p in processes:
         p.start()
 
-    a3c.test_procedure(shared_actor, env)
+    a2c.test_procedure(shared_actor, env)
 
     for p in processes:
         p.join()

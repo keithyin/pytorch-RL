@@ -2,7 +2,6 @@ import torch
 from torch.nn import Module
 import torch.nn as nn
 import torch.nn.functional as F
-from torch import optim
 from torch.nn import init
 
 
@@ -26,18 +25,13 @@ class Actor(Module):
         net = F.relu(net, inplace=True)
         net = self.conv3(net)
         net = F.relu(net, inplace=True)
+
         net = net.view(-1, 10 * 10 * 64)
         net = self.fc1(net)
         net = F.relu(net, inplace=True)
         logits = self.out_layer(net)
-        return logits
 
-    def get_optimizer(self):
-        if self.optimizer is None:
-            self.optimizer = optim.RMSprop(self.parameters(), lr=1e-5)
-            return self.optimizer
-        else:
-            return self.optimizer
+        return logits
 
     def reset_parameters(self):
         for layer in self.children():
@@ -82,13 +76,6 @@ class Critic(Module):
                 init.xavier_normal(layer.weight)
                 init.constant(layer.bias, 0)
         print('the parameters have been initialized.')
-
-    def get_optimizer(self):
-        if self.optimizer is None:
-            self.optimizer = optim.RMSprop(self.parameters(), lr=1e-5)
-            return self.optimizer
-        else:
-            return self.optimizer
 
     def save_model(self, file_path, global_step=None):
         if global_step is None:

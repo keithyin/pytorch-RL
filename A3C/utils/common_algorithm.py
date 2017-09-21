@@ -36,3 +36,4 @@ def one_hot(ids, depth):
     out_tensor.zero_()
     out_tensor.scatter_(dim=1, index=ids, value=1.)
     # out_tensor.scatter_(1, ids, 1.0)
+    return out_tensor

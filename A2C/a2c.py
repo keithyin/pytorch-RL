@@ -26,14 +26,6 @@ def get_env():
     return env
 
 
-def set_shared_grad(model, shared_model):
-    if isinstance(shared_model, type(model)):
-        for param, shared_param in zip(model.parameters(), shared_model.parameters()):
-            if param.grad is None:
-                continue
-            shared_param._grad = param.grad
-
-
 def learning_thread(shared_actor,
                     shared_critic,
                     shared_actor_optim,
@@ -108,54 +100,6 @@ def learning_thread(shared_actor,
         values = local_critic(next_states)
         targets = values.data.mul_(not_done_mask).mul_(gamma)
         targets = targets.add_(rewards)
-
-        # compute the gradient of the critic network
-        values = local_critic(cur_states)
-        loss = criterion(values, Variable(targets))
-        local_critic.zero_grad()
-        loss.backward()
-
-        # compute the gradient of the actor network
-        # first : compute the head gradient
-
-        head_gradient = -(targets - values) * utils.one_hot(actions, depth=num_actions)
-        print(head_gradient)
-        actions_prob = local_actor(cur_states)
-
-        local_actor.zero_grad()
-        actions_prob.backward(head_gradient)
-
-        set_shared_grad(local_actor, shared_actor)
-        set_shared_grad(local_critic, shared_critic)
-        shared_actor_optim.step()
-        shared_critic_optim.step()
-
-
-def test_procedure(shared_actor, env):
-    num_actions = env.action_space.n
-    local_actor = nets.Actor(num_actions=num_actions)
-    # load parameters from shared models
-    while True:
-        local_actor.load_state_dict(shared_actor.state_dict())
-
-        replay_buffer = utils.ReplayBuffer(size=4, frame_history_len=4)
-
-        obs = env.reset()
-        rewards = []
-        begin_time = time.time()
-        while True:
-            replay_buffer.store_frame(obs)
-            states = replay_buffer.encode_recent_observation()
-            states = np.expand_dims(states, axis=0) / 255.0 - .5
-            logits = local_actor(Variable(torch.FloatTensor(states.astype(np.float32))))
-            action = utils.epsilon_greedy(logits, num_actions=env.action_space.n, epsilon=-1.)
-            obs, reward, done, info = env.step(action)
-            rewards.append(reward)
-            if done:
-                print("Time:{}, computer:{}, agent:{}".format(time.time() - begin_time,
-                                                              sum(np.array(rewards) == -1),
-                                                              sum(np.array(rewards) == 1)))
-
 
 def main():
     pass
