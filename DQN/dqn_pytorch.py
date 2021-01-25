@@ -1,10 +1,9 @@
 import itertools
-import sys
 from collections import namedtuple
 import torch
 import gym.spaces
-from torch.autograd import Variable
 from utils.dqn_utils import *
+import os
 from utils import common_algorithm
 
 OptimizerSpec = namedtuple("OptimizerSpec", ["constructor", "kwargs", "lr_schedule"])
@@ -14,6 +13,7 @@ cuda_available = torch.cuda.is_available()
 
 def learn(env,
           q_func,
+          model_ckpt,
           exploration=LinearSchedule(1000000, 0.1),
           replay_buffer_size=1000000,
           batch_size=32,
@@ -75,6 +75,10 @@ def learn(env,
 
     Q_net = q_func(num_actions=num_actions)
     target_net = q_func(num_actions=num_actions)
+    if os.path.exists(model_ckpt):
+        Q_net.restore_model(model_ckpt)
+        target_net.restore_model(model_ckpt)
+
     if cuda_available:
         Q_net.cuda()
         target_net.cuda()
@@ -90,6 +94,7 @@ def learn(env,
     reward_track = []
     episode_num = 0
     for t in itertools.count():
+        # env.render()
         ### 1. Check stopping criterion
         # if stopping_criterion is not None and stopping_criterion(env, t):
         #     break
@@ -101,14 +106,14 @@ def learn(env,
         # take an action                                   #
         # get the reward and observe the next observation  #
         ####################################################
-        idx = replay_buffer.store_frame(last_obs)
+        idx = replay_buffer.store_frame(np.mean(last_obs, axis=2, keepdims=True))
         cur_state = replay_buffer.encode_recent_observation() / 255.0
+        cur_state = torch.from_numpy(np.expand_dims(cur_state, axis=0)).float()
         if cuda_available:
-            cur_state = Variable(torch.FloatTensor(np.expand_dims(cur_state, axis=0)), volatile=True).cuda()
-        else:
-            cur_state = Variable(torch.FloatTensor(np.expand_dims(cur_state, axis=0)), volatile=True)
+            cur_state = cur_state.cuda()
 
-        logits = Q_net(cur_state)
+        with torch.no_grad():
+            logits = Q_net(cur_state)
         #
         action = common_algorithm.epsilon_greedy(logits=logits, num_actions=num_actions,
                                                  epsilon=exploration.value(t))
@@ -138,10 +143,10 @@ def learn(env,
             obs_batch, act_batch, rew_batch, next_obs_batch, done_mask = \
                 replay_buffer.sample(batch_size=batch_size)
             # ndarray -> torch.autograd.Variable
-            obs_batch = Variable(torch.FloatTensor(obs_batch / 255.0))
+            obs_batch = torch.FloatTensor(obs_batch / 255.0)
             # act_batch = torch.IntTensor(act_batch)
             rew_batch = torch.FloatTensor(rew_batch)
-            next_obs_batch = Variable(torch.FloatTensor(next_obs_batch / 255.0))
+            next_obs_batch = torch.FloatTensor(next_obs_batch / 255.0)
             not_done_mask = torch.FloatTensor(1 - done_mask)
 
             if cuda_available:
@@ -163,7 +168,7 @@ def learn(env,
             Q_value = Q_net(obs_batch)
             # choose the value corresponding to action
             common_algorithm.one_hot(act_batch, out_tensor=action_one_hot)
-            action_mask = Variable(action_one_hot.type(new_type=torch.ByteTensor))
+            action_mask = action_one_hot.bool()
             if cuda_available:
                 action_mask = action_mask.cuda()
             selected_value = torch.masked_select(Q_value, mask=action_mask)
@@ -175,6 +180,9 @@ def learn(env,
             # update the target network
             if t % learning_freq == 0:
                 target_net.load_state_dict(Q_net.state_dict())
+
+            if t % (learning_freq * 10000) == 0:
+                target_net.save_model(model_ckpt)
 
 
 def main():

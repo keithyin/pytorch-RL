@@ -1,46 +1,15 @@
 import os.path as osp
 import dqn_pytorch as dqn
-import tensorflow.contrib.layers as layers
 from gym import wrappers
 from nets.qnet_pytorch import QNetwork
 from utils.atari_wrappers import *
 from utils.dqn_utils import *
 
 
-def atari_model(img_in, num_actions, scope, reuse=False):
-    # as described in https://storage.googleapis.com/deepmind-data/assets/papers/DeepMindNature14236Paper.pdf
-    with tf.variable_scope(scope, reuse=reuse):
-        out = img_in
-        with tf.variable_scope("convnet"):
-            # original architecture
-            out = layers.convolution2d(out, num_outputs=32, kernel_size=8, stride=4, activation_fn=tf.nn.relu)
-            out = layers.convolution2d(out, num_outputs=64, kernel_size=4, stride=2, activation_fn=tf.nn.relu)
-            out = layers.convolution2d(out, num_outputs=64, kernel_size=3, stride=1, activation_fn=tf.nn.relu)
-        out = layers.flatten(out)
-        with tf.variable_scope("action_value"):
-            out = layers.fully_connected(out, num_outputs=512, activation_fn=tf.nn.relu)
-            out = layers.fully_connected(out, num_outputs=num_actions, activation_fn=None)
-        # just return the logits
-        return out
-
-
 def atari_learn_pytorch(env,
                         num_timesteps):
     # This is just a rough estimate
     num_iterations = float(num_timesteps) / 4.0
-
-    lr_multiplier = 1.0
-    lr_schedule = PiecewiseSchedule([
-        (0, 1e-4 * lr_multiplier),
-        (num_iterations / 10, 1e-4 * lr_multiplier),
-        (num_iterations / 2, 5e-5 * lr_multiplier),
-    ],
-        outside_value=5e-5 * lr_multiplier)
-    optimizer = dqn.OptimizerSpec(
-        constructor=tf.train.AdamOptimizer,
-        kwargs=dict(epsilon=1e-4),
-        lr_schedule=lr_schedule
-    )
 
     def stopping_criterion(env, t):
         # notice that here t is the number of steps of the wrapped env,
@@ -58,75 +27,22 @@ def atari_learn_pytorch(env,
     dqn.learn(
         env,
         q_func=QNetwork,
-        optimizer_spec=optimizer,
+        model_ckpt="ckpt/model.pth",
         exploration=exploration_schedule,
-        stopping_criterion=stopping_criterion,
         replay_buffer_size=10000,
         batch_size=32,
         gamma=0.99,
         learning_starts=500,
         learning_freq=4,
         frame_history_len=4,
-        target_update_freq=10000,
-        grad_norm_clipping=10
     )
     env.close()
 
 
-def get_available_gpus():
-    from tensorflow.python.client import device_lib
-    local_device_protos = device_lib.list_local_devices()
-    return [x.physical_device_desc for x in local_device_protos if x.device_type == 'GPU']
-
-
-def set_global_seeds(i):
-    try:
-        import tensorflow as tf
-    except ImportError:
-        pass
-    else:
-        tf.set_random_seed(i)
-    np.random.seed(i)
-    random.seed(i)
-
-
-def get_session():
-    tf.reset_default_graph()
-    tf_config = tf.ConfigProto(
-        inter_op_parallelism_threads=1,
-        intra_op_parallelism_threads=1)
-    session = tf.Session(config=tf_config)
-    print("AVAILABLE GPUS: ", get_available_gpus())
-    return session
-
-
-def get_env(task, seed):
-    env_id = task.env_id
-
-    env = gym.make(env_id)
-
-    set_global_seeds(seed)
-    env.seed(seed)
-
-    expt_dir = '/tmp/hw3_vid_dir2/'
-    # env = wrappers.Monitor(env, osp.join(expt_dir, "gym"), force=True)
-    env = wrap_deepmind(env)
-
-    return env
-
-
 def main():
-    # Get Atari games.
-    benchmark = gym.benchmark_spec('Atari40M')
+    env = gym.make("Pong-v0")
 
-    # Change the index to select a different game.
-    task = benchmark.tasks[3]
-
-    # Run training
-    seed = 0  # Use a seed of zero (you may want to randomize the seed!)
-    env = get_env(task, seed)
-
-    atari_learn_pytorch(env, num_timesteps=task.max_timesteps)
+    atari_learn_pytorch(env, num_timesteps=1e8)
 
 
 if __name__ == "__main__":

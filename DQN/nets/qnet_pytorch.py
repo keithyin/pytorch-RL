@@ -17,7 +17,7 @@ class QNetwork(Module):
         # out [batch_size, 9, 9, 64]
         self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2, padding=1)
         self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1)
-        self.fc1 = nn.Linear(in_features=10 * 10 * 64, out_features=512)
+        self.fc1 = nn.Linear(in_features=33280, out_features=512)
         self.out_layer = nn.Linear(in_features=512, out_features=num_actions)
         self.optimizer = None
 
@@ -28,7 +28,7 @@ class QNetwork(Module):
         net = F.relu(net, inplace=True)
         net = self.conv3(net)
         net = F.relu(net, inplace=True)
-        net = net.view(-1, 10 * 10 * 64)
+        net = net.view(-1, 33280)
         net = self.fc1(net)
         net = F.relu(net, inplace=True)
 
