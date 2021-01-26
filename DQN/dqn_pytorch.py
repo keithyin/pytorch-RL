@@ -181,7 +181,7 @@ def learn(env,
             if t % learning_freq == 0:
                 target_net.load_state_dict(Q_net.state_dict())
 
-            if t % (learning_freq * 10000) == 0:
+            if t % (learning_freq * 1000) == 0:
                 target_net.save_model(model_ckpt)
 
 
